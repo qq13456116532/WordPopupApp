@@ -1,0 +1,30 @@
+﻿<Window x:Class="WordPopupApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WordPopupApp"
+        mc:Ignorable="d"
+        Title="划词翻译设置 (快捷键: Ctrl+Z)" Height="300" Width="400"
+        Loaded="Window_Loaded" Closing="Window_Closing"
+        FontFamily="Microsoft YaHei UI">
+    <Grid Margin="20">
+        <StackPanel>
+            <TextBlock Text="Anki 设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+
+            <TextBlock Text="目标牌组 (Deck Name):"/>
+            <!-- 改为下拉列表，数据源为运行时获取的牌组 -->
+            <ComboBox x:Name="DeckComboBox" Margin="0,5,0,10" />
+
+            <TextBlock Text="笔记类型 (Note Type):"/>
+            <!-- 改为下拉列表，数据源为运行时获取的模型 -->
+            <ComboBox x:Name="ModelComboBox" Margin="0,5,0,10" />
+
+
+            <Button Content="保存设置" Click="SaveButton_Click" Width="100" HorizontalAlignment="Left" Margin="0,20,0,0"/>
+
+            <TextBlock Text="使用说明：最小化本窗口后，在任何地方选中英文单词，按 Ctrl + Q 即可查询。"
+                       TextWrapping="Wrap" Margin="0,40,0,0" Foreground="Gray"/>
+        </StackPanel>
+    </Grid>
+</Window>

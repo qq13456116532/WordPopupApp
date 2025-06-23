@@ -1,0 +1,762 @@
+.\App.xaml：
+【﻿
+<Application x:Class="WordPopupApp.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:WordPopupApp"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Application.Resources>
+</Application>】
+
+.\App.xaml.cs：
+【﻿using System.Configuration;
+using System.Data;
+using System.Windows;
+
+namespace WordPopupApp
+{
+    /// <summary>
+    /// Interaction logic for App.xaml
+    /// </summary>
+    public partial class App : Application
+    {
+    }
+
+}
+】
+
+.\AssemblyInfo.cs：
+【using System.Windows;
+
+[assembly: ThemeInfo(
+    ResourceDictionaryLocation.None,            //where theme specific resource dictionaries are located
+                                                //(used if a resource is not found in the page,
+                                                // or application resource dictionaries)
+    ResourceDictionaryLocation.SourceAssembly   //where the generic resource dictionary is located
+                                                //(used if a resource is not found in the page,
+                                                // app, or any theme specific resource dictionaries)
+)]
+】
+
+.\MainWindow.xaml：
+【﻿<Window x:Class="WordPopupApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WordPopupApp"
+        mc:Ignorable="d"
+        Title="划词翻译设置 (快捷键: Ctrl+Z)" Height="300" Width="400"
+        Loaded="Window_Loaded" Closing="Window_Closing"
+        FontFamily="Microsoft YaHei UI">
+    <Grid Margin="20">
+        <StackPanel>
+            <TextBlock Text="Anki 设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+
+            <TextBlock Text="目标牌组 (Deck Name):"/>
+            <TextBox x:Name="DeckNameTextBox" Margin="0,5,0,10" Text="Default"/>
+
+            <TextBlock Text="笔记类型 (Note Type):"/>
+            <TextBox x:Name="ModelNameTextBox" Margin="0,5,0,10" Text="Basic"/>
+
+            <Button Content="保存设置" Click="SaveButton_Click" Width="100" HorizontalAlignment="Left" Margin="0,20,0,0"/>
+
+            <TextBlock Text="使用说明：最小化本窗口后，在任何地方选中英文单词，按 Ctrl + Q 即可查询。"
+                       TextWrapping="Wrap" Margin="0,40,0,0" Foreground="Gray"/>
+        </StackPanel>
+    </Grid>
+</Window>】
+
+.\MainWindow.xaml.cs：
+【﻿using System;
+using System.Threading.Tasks;
+using System.Windows;
+using WordPopupApp.Services;
+using WordPopupApp.Models;
+using WordPopupApp.ViewModels;
+using WordPopupApp.Views;
+using System.Windows.Interop;
+using System.Windows.Input;
+
+namespace WordPopupApp
+{
+    public partial class MainWindow : Window
+    {
+        private GlobalHotKey _hotKey;
+        private readonly DictionaryService _dictionaryService;
+        private readonly AnkiService _ankiService;
+        private readonly SettingsService _settingsService;
+        private AppSettings _currentSettings;
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            _dictionaryService = new DictionaryService();
+            _ankiService = new AnkiService();
+            _settingsService = new SettingsService();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 加载设置
+            _currentSettings = _settingsService.LoadSettings();
+            DeckNameTextBox.Text = _currentSettings.AnkiDeckName;
+            ModelNameTextBox.Text = _currentSettings.AnkiModelName;
+
+            // 注册全局热键 Ctrl + Z
+            try
+            {
+                uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.Z);  // 把 WPF 的 Key 转成 VK
+                _hotKey = new GlobalHotKey(this, HotKeyModifiers.MOD_CONTROL, vk);
+                // Virtual-Key Codes: https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+                _hotKey.HotKeyPressed += OnHotKeyPressed;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"注册热键失败: {ex.Message}");
+            }
+        }
+
+        private async void OnHotKeyPressed()
+        {
+            // 1. 模拟Ctrl+C复制选中内容
+            GlobalHotKey.SimulateCtrlC();
+
+            // 2. 从剪贴板获取文本
+            string selectedText = GlobalHotKey.GetTextFromClipboard()?.Trim();
+
+            if (string.IsNullOrEmpty(selectedText))
+            {
+                return;
+            }
+
+            // 3. 异步查询
+            var entry = await _dictionaryService.LookupAsync(selectedText);
+
+            // 4. 创建ViewModel和View
+            var viewModel = new PopupResultViewModel(entry, _ankiService, _currentSettings);
+            var popup = new PopupResultWindow
+            {
+                DataContext = viewModel
+            };
+
+            // 5. 在鼠标旁显示窗口
+            popup.SetPositionAndShow();
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            _currentSettings.AnkiDeckName = DeckNameTextBox.Text;
+            _currentSettings.AnkiModelName = ModelNameTextBox.Text;
+            _settingsService.SaveSettings(_currentSettings);
+            MessageBox.Show("设置已保存！");
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _hotKey?.Dispose();
+        }
+    }
+}】
+
+.\mergy.py：
+【import os
+
+# 排除的文件夹名（忽略大小写）
+exclude_folders = {'bin', '.vs', 'obj'}
+
+# 输出文件名
+output_file = 'all_files.txt'
+
+with open(output_file, 'w', encoding='utf-8') as outfile:
+    for root, dirs, files in os.walk('.'):
+        # 修改dirs可以跳过不想遍历的文件夹
+        dirs[:] = [d for d in dirs if d.lower() not in exclude_folders]
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            # 跳过输出文件本身
+            if os.path.abspath(filepath) == os.path.abspath(output_file):
+                continue
+            try:
+                with open(filepath, 'r', encoding='utf-8') as infile:
+                    content = infile.read()
+            except Exception as e:
+                content = f"[无法读取文件: {e}]"
+            outfile.write(f"{filepath}：\n【{content}】\n\n")
+print(f"文件内容已输出到 {output_file}")
+】
+
+.\WordPopupApp.csproj：
+【﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.NewtonsoftJson" Version="2.3.0" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+
+  </ItemGroup>
+
+</Project>
+】
+
+.\WordPopupApp.csproj.user：
+【﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+</Project>】
+
+.\WordPopupApp.sln：
+【﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36212.18 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WordPopupApp", "WordPopupApp.csproj", "{447F9C31-11D4-4E59-80AC-FDC5D752943E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{447F9C31-11D4-4E59-80AC-FDC5D752943E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{447F9C31-11D4-4E59-80AC-FDC5D752943E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{447F9C31-11D4-4E59-80AC-FDC5D752943E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{447F9C31-11D4-4E59-80AC-FDC5D752943E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7E579AB8-3E00-4E43-BA72-7685CD9D41FC}
+	EndGlobalSection
+EndGlobal
+】
+
+.\Models\AnkiModels.cs：
+【﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using System.Collections.Generic;
+
+namespace WordPopupApp.Models
+{
+    public class AnkiNote
+    {
+        public string DeckName { get; set; }
+        public string ModelName { get; set; }
+        public Dictionary<string, string> Fields { get; set; }
+        public List<string> Tags { get; set; }
+    }
+
+    public class AnkiAction
+    {
+        public string Action { get; set; }
+        public int Version { get; set; }
+        public object Params { get; set; }
+    }
+
+    public class AnkiAddNoteAction : AnkiAction
+    {
+        public AnkiAddNoteAction(AnkiNote note)
+        {
+            Action = "addNote";
+            Version = 6;
+            Params = new { note };
+        }
+    }
+}
+】
+
+.\Models\AppSettings.cs：
+【namespace WordPopupApp.Models
+{
+    public class AppSettings
+    {
+        public string AnkiDeckName { get; set; } = "Default";
+        public string AnkiModelName { get; set; } = "Basic";
+    }
+}】
+
+.\Models\DictionaryModels.cs：
+【﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+// 我们将使用免费的 https://dictionaryapi.dev/
+// 这个文件是根据其返回的JSON结构创建的
+using System.Collections.Generic;
+
+namespace WordPopupApp.Models
+{
+    public class Phonetic
+    {
+        public string Text { get; set; }
+        public string Audio { get; set; }
+    }
+
+    public class Definition
+    {
+        public string PartOfSpeech { get; set; }
+        public List<string> Synonyms { get; set; }
+        public List<string> Antonyms { get; set; }
+        public string DefinitionText { get; set; } // Renamed from "definition"
+        public string Example { get; set; }
+    }
+
+    public class Meaning
+    {
+        public string PartOfSpeech { get; set; }
+        public List<Definition> Definitions { get; set; }
+    }
+
+    public class DictionaryEntry
+    {
+        public string Word { get; set; }
+        public List<Phonetic> Phonetics { get; set; }
+        public List<Meaning> Meanings { get; set; }
+    }
+}】
+
+.\Services\AnkiService.cs：
+【﻿
+using WordPopupApp.Models;
+
+namespace WordPopupApp.Services
+{
+    public class AnkiService
+    {
+        public async Task AddNoteAsync(AnkiNote note)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+】
+
+.\Services\DictionaryService.cs：
+【﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using WordPopupApp.Models;
+
+namespace WordPopupApp.Services
+{
+    public class DictionaryService
+    {
+        private readonly HttpClient _httpClient = new HttpClient();
+        private const string ApiUrl = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+
+        public async Task<DictionaryEntry> LookupAsync(string word)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(ApiUrl + word);
+                if (!response.IsSuccessStatusCode) return null;
+
+                var json = await response.Content.ReadAsStringAsync();
+                // API返回的是一个数组，我们只取第一个结果
+                var entries = JsonConvert.DeserializeObject<List<DictionaryEntry>>(json);
+                return entries?.FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+}】
+
+.\Services\GlobalHotKey.cs：
+【﻿// 需要引用 System.Windows.Forms
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows;
+using System.Windows.Forms;
+using System.Windows.Interop;
+using Clipboard = System.Windows.Clipboard;
+
+namespace WordPopupApp.Services
+{
+    public class GlobalHotKey : IDisposable
+    {
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        // 使用 SendKeys 模拟 Ctrl+C
+        public static void SimulateCtrlC()
+        {
+            Thread.Sleep(100); // 等待一下，确保焦点在选中的文本上
+            SendKeys.SendWait("^c");
+            Thread.Sleep(100); // 等待剪贴板内容更新
+        }
+
+        public static string GetTextFromClipboard()
+        {
+            for (int i = 0; i < 5; i++) // 尝试几次以防万一
+            {
+                try
+                {
+                    if (Clipboard.ContainsText())
+                    {
+                        return Clipboard.GetText();
+                    }
+                }
+                catch (COMException)
+                {
+                    // 剪贴板正被其他进程占用，稍等后重试
+                    Thread.Sleep(50);
+                }
+            }
+            return string.Empty;
+        }
+
+
+        private HwndSource _source;
+        private readonly int _id;
+        private readonly Window _window;
+
+        public event Action HotKeyPressed;
+
+        public GlobalHotKey(Window window, uint modifier, uint key)
+        {
+            _window = window;
+            _id = GetHashCode();
+
+            var helper = new WindowInteropHelper(_window);
+            helper.EnsureHandle();
+            _source = HwndSource.FromHwnd(helper.Handle);
+            _source.AddHook(HwndHook);
+
+            if (!RegisterHotKey(_source.Handle, _id, modifier, key))
+            {
+                throw new InvalidOperationException("无法注册热键。");
+            }
+        }
+
+        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_HOTKEY = 0x0312;
+            if (msg == WM_HOTKEY && wParam.ToInt32() == _id)
+            {
+                HotKeyPressed?.Invoke();
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        public void Dispose()
+        {
+            _source.RemoveHook(HwndHook);
+            UnregisterHotKey(_source.Handle, _id);
+        }
+    }
+
+    // 定义修饰键常量
+    public static class HotKeyModifiers
+    {
+        public const uint MOD_NONE = 0x0000;
+        public const uint MOD_ALT = 0x0001;
+        public const uint MOD_CONTROL = 0x0002;
+        public const uint MOD_SHIFT = 0x0004;
+        public const uint MOD_WIN = 0x0008;
+    }
+}】
+
+.\Services\SettingsService.cs：
+【﻿using Newtonsoft.Json;
+using System;
+using System.IO;
+using WordPopupApp.Models;
+
+namespace WordPopupApp.Services
+{
+    public class SettingsService
+    {
+        private readonly string _settingsFilePath;
+
+        public SettingsService()
+        {
+            // 将配置文件保存在 AppData 目录下
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appDir = Path.Combine(appDataPath, "WordPopupApp");
+            Directory.CreateDirectory(appDir);
+            _settingsFilePath = Path.Combine(appDir, "settings.json");
+        }
+
+        public AppSettings LoadSettings()
+        {
+            if (File.Exists(_settingsFilePath))
+            {
+                var json = File.ReadAllText(_settingsFilePath);
+                return JsonConvert.DeserializeObject<AppSettings>(json);
+            }
+            return new AppSettings(); // 返回默认设置
+        }
+
+        public void SaveSettings(AppSettings settings)
+        {
+            var json = JsonConvert.SerializeObject(settings, Formatting.Indented);
+            File.WriteAllText(_settingsFilePath, json);
+        }
+    }
+}】
+
+.\ViewModels\PopupResultViewModel.cs：
+【﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Controls;
+using WordPopupApp.Services;
+using WordPopupApp.Models;
+using WordPopupApp.Services;
+
+namespace WordPopupApp.ViewModels
+{
+    public partial class PopupResultViewModel : ObservableObject
+    {
+        [ObservableProperty]
+        private bool isLoading = true;
+
+        [ObservableProperty]
+        private string word;
+
+        [ObservableProperty]
+        private string phoneticText;
+
+        [ObservableProperty]
+        private string definitionText;
+
+        [ObservableProperty]
+        private bool hasAudio;
+
+        private string audioUrl;
+        private DictionaryEntry _fullEntry;
+        private readonly AnkiService _ankiService;
+        private readonly AppSettings _settings;
+
+        public PopupResultViewModel(DictionaryEntry entry, AnkiService ankiService, AppSettings settings)
+        {
+            _fullEntry = entry;
+            _ankiService = ankiService;
+            _settings = settings;   
+
+            IsLoading = false;
+
+            if (entry == null)
+            {
+                Word = "未找到";
+                DefinitionText = "无法查询到该单词或短语的释义。";
+                return;
+            }
+
+            Word = entry.Word;
+
+            var phonetic = entry.Phonetics?.FirstOrDefault(p => !string.IsNullOrEmpty(p.Text));
+            PhoneticText = phonetic?.Text ?? "";
+
+            var audio = entry.Phonetics?.FirstOrDefault(p => !string.IsNullOrEmpty(p.Audio));
+            audioUrl = audio?.Audio;
+            HasAudio = !string.IsNullOrEmpty(audioUrl);
+
+            var sb = new StringBuilder();
+            foreach (var meaning in entry.Meanings)
+            {
+                sb.AppendLine($"▶ {meaning.PartOfSpeech}");
+                foreach (var def in meaning.Definitions.Take(3)) // 最多显示3条释义
+                {
+                    sb.AppendLine($"  - {def.DefinitionText}");
+                    if (!string.IsNullOrEmpty(def.Example))
+                    {
+                        sb.AppendLine($"    e.g. {def.Example}");
+                    }
+                }
+                sb.AppendLine();
+            }
+            DefinitionText = sb.ToString().Trim();
+        }
+
+        [RelayCommand]
+        private void PlayAudio()
+        {
+            if (HasAudio)
+            {
+                // 使用一个临时的 MediaElement 播放音频
+                var mediaElement = new MediaElement { Volume = 1 };
+                mediaElement.LoadedBehavior = MediaState.Play;
+                mediaElement.Source = new System.Uri(audioUrl, System.UriKind.Absolute);
+            }
+        }
+
+        [RelayCommand]
+        private async Task AddToAnki()
+        {
+            if (_fullEntry == null) return;
+
+            var note = new AnkiNote
+            {
+                DeckName = _settings.AnkiDeckName,
+                ModelName = _settings.AnkiModelName,
+                Fields = new System.Collections.Generic.Dictionary<string, string>
+                {
+                    // 假设你的Anki模板字段是 "Front" 和 "Back"
+                    { "Front", Word },
+                    { "Back", DefinitionText.Replace("\n", "<br/>") } // Anki中换行用<br/>
+                },
+                Tags = new System.Collections.Generic.List<string> { "WordPopupApp" }
+            };
+
+            await _ankiService.AddNoteAsync(note);
+        }
+    }
+}】
+
+.\Views\PopupResultWindow.xaml：
+【﻿<Window x:Class="WordPopupApp.Views.PopupResultWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WordPopupApp.Views"
+        mc:Ignorable="d"
+        Title="查询结果" Height="250" Width="400"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        Deactivated="Window_Deactivated" MouseLeave="Window_MouseLeave"
+        FontFamily="Microsoft YaHei UI">
+    <Border Background="#F0FFFFFF" CornerRadius="8" BorderThickness="1" BorderBrush="#CCCCCC">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="0" BlurRadius="10" Color="#AAAAAA" Opacity="0.5"/>
+        </Border.Effect>
+        <Grid Margin="15">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Word}" FontSize="24" FontWeight="Bold" Foreground="#222222"/>
+                <TextBlock Text="{Binding PhoneticText}" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#555555"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,10">
+                <Button Content="🔊 UK" Command="{Binding PlayAudioCommand}" IsEnabled="{Binding HasAudio}" Margin="0,0,5,0" Padding="5,2"/>
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <TextBlock Text="{Binding DefinitionText}" TextWrapping="Wrap" FontSize="14" Foreground="#333333"/>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <Button Content="+ Anki" Padding="10,3" Command="{Binding AddToAnkiCommand}"/>
+            </StackPanel>
+
+            <TextBlock Text="正在查询..." Grid.Row="0" Grid.RowSpan="4" FontSize="18"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+        </Grid>
+    </Border>
+</Window>】
+
+.\Views\PopupResultWindow.xaml.cs：
+【﻿using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Input;
+
+namespace WordPopupApp.Views
+{
+    public partial class PopupResultWindow : Window
+    {
+        // P/Invoke for getting mouse position
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetCursorPos(ref Win32Point pt);
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct Win32Point
+        {
+            public int X;
+            public int Y;
+        };
+
+        public static Point GetMousePosition()
+        {
+            var w32Mouse = new Win32Point();
+            GetCursorPos(ref w32Mouse);
+            return new Point(w32Mouse.X, w32Mouse.Y);
+        }
+
+        public PopupResultWindow()
+        {
+            InitializeComponent();
+        }
+
+        public void SetPositionAndShow()
+        {
+            var mousePosition = GetMousePosition();
+            this.Left = mousePosition.X + 15; // 在鼠标右侧显示
+            this.Top = mousePosition.Y + 15;  // 在鼠标下方显示
+
+            // 确保窗口不会超出屏幕边界
+            ValidatePosition();
+
+            this.Show();
+            this.Activate();
+        }
+
+        private void ValidatePosition()
+        {
+            double screenWidth = SystemParameters.VirtualScreenWidth;
+            double screenHeight = SystemParameters.VirtualScreenHeight;
+
+            if (this.Left + this.Width > screenWidth)
+            {
+                this.Left = screenWidth - this.Width - 15;
+            }
+            if (this.Top + this.Height > screenHeight)
+            {
+                this.Top = screenHeight - this.Height - 15;
+            }
+        }
+
+
+        // 窗口失去焦点时自动关闭
+        private void Window_Deactivated(object sender, System.EventArgs e)
+        {
+            this.Close();
+        }
+
+        // 鼠标离开窗口时自动关闭（提供多一种关闭方式）
+        private void Window_MouseLeave(object sender, MouseEventArgs e)
+        {
+            this.Close();
+        }
+    }
+}】
+
