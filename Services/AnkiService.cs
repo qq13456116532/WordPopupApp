@@ -40,7 +40,6 @@ namespace WordPopupApp.Services
 
         public Task<List<string>> GetDeckNamesAsync() => InvokeAsync<List<string>>("deckNames");
 
-        public Task<List<string>> GetModelNamesAsync() => InvokeAsync<List<string>>("modelNames");
 
         public async Task AddNoteAsync(AnkiNote note)
         {

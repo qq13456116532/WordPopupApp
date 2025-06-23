@@ -33,3 +33,6 @@ E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\refint\WordPopupApp
 E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\WordPopupApp.pdb
 E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\WordPopupApp.genruntimeconfig.cache
 E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\ref\WordPopupApp.dll
+E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\Views\TemplateEditWindow.baml
+E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\Views\TemplateEditWindow.g.cs
+E:\VisualStduioProject\WordPopupApp\obj\Debug\net9.0-windows\WordPopupApp.sourcelink.json

@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Windows.Controls;
 using WordPopupApp.Services;
 using WordPopupApp.Models;
-using WordPopupApp.Services;
 
 namespace WordPopupApp.ViewModels
 {
@@ -90,17 +89,29 @@ namespace WordPopupApp.ViewModels
         {
             if (_fullEntry == null) return;
 
+            // 1) 生成音频文件名
+            var fileName = $"{Word}_{DateTimeOffset.Now.ToUnixTimeSeconds()}.mp3";
+
+            // 2) 构造 note，字段与模板一一对应
             var note = new AnkiNote
             {
                 DeckName = _settings.AnkiDeckName,
-                ModelName = _settings.AnkiModelName,
-                Fields = new System.Collections.Generic.Dictionary<string, string>
+                Fields = new Dictionary<string, string>
                 {
-                    // 假设你的Anki模板字段是 "Front" 和 "Back"
-                    { "Front", Word },
-                    { "Back", DefinitionText.Replace("\n", "<br/>") } // Anki中换行用<br/>
+                    { "单词", $"{Word} {PhoneticText}<br>[sound:{fileName}]" },
+                    { "释义", DefinitionText.Replace("\n", "<br/>") },
+                    { "笔记", "" },
+                    { "例句", "" }
                 },
-                Tags = new System.Collections.Generic.List<string> { "WordPopupApp" }
+                Tags = new List<string> { "WordPopupApp" },
+                Audio = HasAudio
+                    ? new AnkiAudio
+                      {
+                          Url = audioUrl,
+                          Filename = fileName,
+                          Fields = new List<string> { "单词" }
+                      }
+                    : null
             };
 
             await _ankiService.AddNoteAsync(note);
