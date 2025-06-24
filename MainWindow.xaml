@@ -16,12 +16,9 @@
             <!-- 改为下拉列表，数据源为运行时获取的牌组 -->
             <ComboBox x:Name="DeckComboBox" Margin="0,5,0,10" />
 
-            <Button Content="编辑模板" Click="EditTemplateButton_Click" Width="100" HorizontalAlignment="Left" Margin="10,0,0,0"/>
-
-
             <Button Content="保存设置" Click="SaveButton_Click" Width="100" HorizontalAlignment="Left" Margin="0,20,0,0"/>
 
-            <TextBlock Text="使用说明：最小化本窗口后，在任何地方选中英文单词，按 Ctrl + Q 即可查询。"
+            <TextBlock Text="使用说明：最小化本窗口后，在任何地方选中英文单词，按 Ctrl + Z 即可查询。"
                        TextWrapping="Wrap" Margin="0,40,0,0" Foreground="Gray"/>
         </StackPanel>
     </Grid>

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 // 我们将使用免费的 https://dictionaryapi.dev/
 // 这个文件是根据其返回的JSON结构创建的
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace WordPopupApp.Models
 {
@@ -21,7 +22,10 @@ namespace WordPopupApp.Models
         public string PartOfSpeech { get; set; }
         public List<string> Synonyms { get; set; }
         public List<string> Antonyms { get; set; }
-        public string DefinitionText { get; set; } // Renamed from "definition"
+
+        // [修改] 添加JsonProperty属性以匹配API返回的JSON字段名
+        [JsonProperty("definition")]
+        public string DefinitionText { get; set; }
         public string Example { get; set; }
     }
 

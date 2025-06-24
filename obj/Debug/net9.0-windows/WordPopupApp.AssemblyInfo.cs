@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WordPopupApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+963656a582e517403d445d56a814e0f8e86c73d5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ce24cae8ac588cac922283609a7dc908de6f749c")]
 [assembly: System.Reflection.AssemblyProductAttribute("WordPopupApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WordPopupApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

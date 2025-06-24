@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 
@@ -29,18 +30,24 @@ namespace WordPopupApp.Views
         {
             InitializeComponent();
         }
+        // 拦截用户点 × 或 Alt+F4
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            e.Cancel = true;  // 取消真正关闭
+            Hide();           // 只做隐藏
+        }
 
         public void SetPositionAndShow()
         {
             var mousePosition = GetMousePosition();
-            this.Left = mousePosition.X + 15; // 在鼠标右侧显示
-            this.Top = mousePosition.Y + 15;  // 在鼠标下方显示
+            Left = mousePosition.X + 15; // 在鼠标右侧显示
+            Top = mousePosition.Y + 15;  // 在鼠标下方显示
 
             // 确保窗口不会超出屏幕边界
             ValidatePosition();
 
-            this.Show();
-            this.Activate();
+            Show();
+            Activate();
         }
 
         private void ValidatePosition()
@@ -48,27 +55,17 @@ namespace WordPopupApp.Views
             double screenWidth = SystemParameters.VirtualScreenWidth;
             double screenHeight = SystemParameters.VirtualScreenHeight;
 
-            if (this.Left + this.Width > screenWidth)
+            if (Left + Width > screenWidth)
             {
-                this.Left = screenWidth - this.Width - 15;
+                Left = screenWidth - Width - 15;
             }
-            if (this.Top + this.Height > screenHeight)
+            if (Top + Height > screenHeight)
             {
-                this.Top = screenHeight - this.Height - 15;
+                Top = screenHeight - Height - 15;
             }
         }
 
 
-        // 窗口失去焦点时自动关闭
-        private void Window_Deactivated(object sender, System.EventArgs e)
-        {
-            this.Close();
-        }
 
-        // 鼠标离开窗口时自动关闭（提供多一种关闭方式）
-        private void Window_MouseLeave(object sender, MouseEventArgs e)
-        {
-            this.Close();
-        }
     }
 }

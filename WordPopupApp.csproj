@@ -14,5 +14,9 @@
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
 
   </ItemGroup>
-
+    <!-- 让 VS Code / C# Dev Kit 能看到 XAML 生成的 *.g.cs -->
+  <ItemGroup>
+    <!-- $(IntermediateOutputPath) 会自动展开成 obj\Debug\net9.0-windows\ 或 obj\Release\net9.0-windows\ -->
+    <Compile Include="$(IntermediateOutputPath)\*.g.cs" />
+  </ItemGroup>
 </Project>

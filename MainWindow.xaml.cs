@@ -17,7 +17,17 @@ namespace WordPopupApp
     public partial class MainWindow : Window
     {
         private GlobalHotKey _hotKey;
+        private PopupResultWindow _popup;            // 单例实例
+
+        private PopupResultWindow Popup
+        => _popup ??= new PopupResultWindow      // 第一次用时才创建
+        {
+            Owner   = this,                      // 可选：让浮窗跟随主窗关闭
+            WindowStartupLocation = WindowStartupLocation.Manual
+        };
+
         private readonly DictionaryService _dictionaryService;
+        private readonly TranslationService _translationService; // <-- 新增
         private readonly AnkiService _ankiService;
         private readonly SettingsService _settingsService;
         private AppSettings _currentSettings;
@@ -26,6 +36,7 @@ namespace WordPopupApp
         {
             InitializeComponent();
             _dictionaryService = new DictionaryService();
+            _translationService = new TranslationService(); // <-- 新增：实例化翻译服务
             _ankiService = new AnkiService();
             _settingsService = new SettingsService();
         }
@@ -57,7 +68,8 @@ namespace WordPopupApp
                 uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.Z);  // 把 WPF 的 Key 转成 VK
                 _hotKey = new GlobalHotKey(this, HotKeyModifiers.MOD_CONTROL, vk);
                 // Virtual-Key Codes: https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
-                _hotKey.HotKeyPressed += OnHotKeyPressed;
+                _hotKey.HotKeyPressed += async () => await HandleHotKeyAsync();
+
             }
             catch (Exception ex)
             {
@@ -65,31 +77,42 @@ namespace WordPopupApp
             }
         }
 
-        private async void OnHotKeyPressed()
+        // 热键回调（已改成 async Task）
+        private async Task HandleHotKeyAsync()
         {
-            // 1. 模拟Ctrl+C复制选中内容
-            GlobalHotKey.SimulateCtrlC();
-
-            // 2. 从剪贴板获取文本
-            string selectedText = GlobalHotKey.GetTextFromClipboard()?.Trim();
-
-            if (string.IsNullOrEmpty(selectedText))
+            try
             {
-                return;
+                GlobalHotKey.SimulateCtrlC();
+                var text = GlobalHotKey.GetTextFromClipboard()?.Trim();
+                if (string.IsNullOrWhiteSpace(text)) return;
+
+                var dictionaryTask = _dictionaryService.LookupAsync(text);
+                var translationTask = _translationService.TranslateToChineseAsync(text);
+
+                await Task.WhenAll(dictionaryTask, translationTask);
+
+                var entry = await dictionaryTask;
+                var chineseTranslation = await translationTask;
+
+                // [修改] 创建ViewModel时，传入关闭窗口的回调
+                Popup.DataContext = new PopupResultViewModel(
+                                        entry,
+                                        chineseTranslation,
+                                        _ankiService,
+                                        _currentSettings,
+                                        this,
+                                        () => Popup.Hide()); // <--- 新增此行
+
+                var p = System.Windows.Forms.Cursor.Position;
+                Popup.Left = p.X + 20;
+                Popup.Top = p.Y + 20;
+                Popup.Show();
+                Popup.Activate();
             }
-
-            // 3. 异步查询
-            var entry = await _dictionaryService.LookupAsync(selectedText);
-
-            // 4. 创建ViewModel和View
-            var viewModel = new PopupResultViewModel(entry, _ankiService, _currentSettings);
-            var popup = new PopupResultWindow
+            catch (Exception ex)
             {
-                DataContext = viewModel
-            };
-
-            // 5. 在鼠标旁显示窗口
-            popup.SetPositionAndShow();
+                MessageBox.Show($"热键处理失败：{ex.Message}");
+            }
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -103,16 +126,6 @@ namespace WordPopupApp
 
             _settingsService.SaveSettings(_currentSettings);
             MessageBox.Show("设置已保存！");
-        }
-        private void EditTemplateButton_Click(object sender, RoutedEventArgs e)
-        {
-            var editWindow = new TemplateEditWindow(_currentSettings.CardTemplate);
-            if (editWindow.ShowDialog() == true)
-            {
-                _currentSettings.CardTemplate = editWindow.TemplateText;
-                _settingsService.SaveSettings(_currentSettings);
-                MessageBox.Show("模板已保存！");
-            }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -327,8 +340,8 @@ namespace WordPopupApp
             var existModels = await AnkiConnectRequestAsync<List<string>>("modelNames");
             if (existModels.Contains(ModelName))
             {
-                // 2. 如果存在，先删除
-                await AnkiConnectRequestAsync<object>("deleteModel", new { modelName = ModelName });
+                // 2. 如果存在，不确定怎么做，先空着 TO DO
+                return;
             }
             // 3. 新建 Note Type
             await AnkiConnectRequestAsync<object>("createModel", new
@@ -353,7 +366,7 @@ namespace WordPopupApp
             {
                 action,
                 version = 6,
-                @params = parameters
+                @params = parameters ?? new { }
             };
             var resp = await client.PostAsync("http://127.0.0.1:8765", 
                 new StringContent(JsonConvert.SerializeObject(postObj), Encoding.UTF8, "application/json"));

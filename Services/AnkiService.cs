@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json;
 using WordPopupApp.Models;
+using Newtonsoft.Json.Serialization;   // 需要引入
 
 namespace WordPopupApp.Services
 {
@@ -19,7 +20,14 @@ namespace WordPopupApp.Services
                 @params = parameters ?? new { }
             };
 
-            var json = JsonConvert.SerializeObject(payload);
+
+            var settings = new JsonSerializerSettings
+            {
+                ContractResolver = new CamelCasePropertyNamesContractResolver()
+            };
+
+            var json = JsonConvert.SerializeObject(payload, settings);
+
             var resp = await _httpClient.PostAsync("/", new StringContent(json, Encoding.UTF8, "application/json"));
             resp.EnsureSuccessStatusCode();
 
