@@ -5,12 +5,12 @@
 ---
 `WordPopupApp` 是一款为 Windows 用户设计的 C#/.NET 桌面应用。它提供了一个简单高效的划词翻译体验，并能一键将查询的单词及其中英文释义、例句、发音等信息制成卡片，添加到 [Anki](https://apps.ankiweb.net/) 中，极大地提升了阅读和学习效率。
 
-![应用截图](Assets\截图0.png) 
-![应用截图](Assets\截图1.png) 
+![应用截图](./Assets/截图0.png) 
+![应用截图](./Assets/截图1.png) 
 
 当点击 `+Anki` 之后，在Anki生成的卡片如下：
-![应用截图](Assets\截图2.png) 
-![应用截图](Assets\截图3.png) 
+![应用截图](./Assets/截图2.png) 
+![应用截图](./Assets/截图3.png) 
 
 
 ## ✨ 主要功能
