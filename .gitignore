@@ -25,3 +25,6 @@ __pycache__/
 
 # JSON settings (optional if contains secrets)
 settings.json
+
+all_files.txt
+mergy.py

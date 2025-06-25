@@ -7,7 +7,8 @@
         mc:Ignorable="d"
         Title="划词翻译设置 (快捷键: Ctrl+Z)" Height="300" Width="400"
         Loaded="Window_Loaded" Closing="Window_Closing"
-        FontFamily="Microsoft YaHei UI">
+        FontFamily="Microsoft YaHei UI"
+        Icon="/Assets/app.ico">
     <Grid Margin="20">
         <StackPanel>
             <TextBlock Text="Anki 设置" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>

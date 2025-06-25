@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using WordPopupApp.Services;
 using WordPopupApp.Models;
 using System.Windows;
+using System.Collections.Generic; // [新增]
 
 namespace WordPopupApp.ViewModels
 {
@@ -41,14 +42,21 @@ namespace WordPopupApp.ViewModels
         private readonly AnkiService _ankiService;
         private readonly AppSettings _settings;
         private readonly MainWindow _mainWindow;
+        private readonly List<string> _phrases; // [新增] 用于存储词组
+
+
         // [修改] 构造函数签名，增加 chineseTranslation 参数
-        public PopupResultViewModel(DictionaryEntry entry, string chineseTranslation, AnkiService ankiService, AppSettings settings, MainWindow mainWindow, Action closeAction)        {
+// [修改] 构造函数签名，增加 phrases 参数
+        public PopupResultViewModel(DictionaryEntry entry, string chineseTranslation, List<string> phrases, AnkiService ankiService, AppSettings settings, MainWindow mainWindow, Action closeAction)        {
+            // entry是单词的json
             _fullEntry = entry;
             _ankiService = ankiService;
             _settings = settings;
             _mainWindow = mainWindow;
             IsLoading = false;
             _closeAction = closeAction; // 新增：保存回调
+            _phrases = phrases; // [新增] 保存词组
+
             ChineseDefinition = chineseTranslation ?? "翻译失败"; // 设置中文翻译
 
             if (entry == null)
@@ -81,7 +89,7 @@ namespace WordPopupApp.ViewModels
             foreach (var meaning in entry.Meanings)
             {
                 sb.AppendLine($"▶ {meaning.PartOfSpeech}");
-                foreach (var def in meaning.Definitions.Take(3)) 
+                foreach (var def in meaning.Definitions.Take(3))
                 {
                     // 注意：这里用 DefinitionText
                     sb.AppendLine($"  - {def.DefinitionText}");
@@ -123,18 +131,49 @@ namespace WordPopupApp.ViewModels
                 }
                 // 1) 生成音频文件名
                 var fileName = $"{Word}_{DateTimeOffset.Now.ToUnixTimeSeconds()}.mp3";
-                // 取最多 3 句例句，<br/> 分行
-                var examples = string.Join("<br/>",
-                    _fullEntry.Meanings
-                                .SelectMany(m => m.Definitions)
-                                .Where(d => !string.IsNullOrWhiteSpace(d.Example))
-                                .Take(3)
-                                .Select(d => d.Example)
-                                .Select(e => e.Replace("\n", "<br/>")));
+                // [新逻辑] 智能选择2-3个例句
+                var selectedExamples = new List<string>();
+
+                // 1. 优先从每个词性中各取一个例句
+                var examplesFromEachPos = _fullEntry.Meanings
+                    .Select(m => m.Definitions.FirstOrDefault(d => !string.IsNullOrWhiteSpace(d.Example))?.Example)
+                    .Where(ex => !string.IsNullOrEmpty(ex))
+                    .ToList();
+                
+                selectedExamples.AddRange(examplesFromEachPos);
+
+                // 2. 如果例句总数少于2个，并且还有更多例句可用，则进行补充
+                if (selectedExamples.Count < 2)
+                {
+                    // 查找所有可用的例句，排除已经选过的
+                    var allOtherExamples = _fullEntry.Meanings
+                        .SelectMany(m => m.Definitions)
+                        .Select(d => d.Example)
+                        .Where(ex => !string.IsNullOrEmpty(ex) && !selectedExamples.Contains(ex))
+                        .ToList();
+
+                    // 需要补充的数量
+                    int needed = 2 - selectedExamples.Count;
+                    
+                    // 从剩余的例句中补充
+                    if (allOtherExamples.Any())
+                    {
+                        selectedExamples.AddRange(allOtherExamples.Take(needed));
+                    }
+                }
+                
+                // 3. 格式化并合并最终的例句列表
+                var examples = string.Join("<br/>", 
+                    selectedExamples.Select(e => e.Replace("\n", "<br/>"))
+                );
                 var notes = string.Join("<br/>",
                     _fullEntry.Meanings
                               .Select(m => $"◆ {m.PartOfSpeech}"));
-
+                // [修改] 使用获取到的词组填充 "笔记" 字段
+                notes = (_phrases != null && _phrases.Any())
+                    ? string.Join("<br/>", _phrases) // 如果有词组，就用词组
+                    : notes;                    // 如果没有，显示提示信息
+                    
                 // 2) 构造 note，字段与模板一一对应
                 var note = new AnkiNote
                 {

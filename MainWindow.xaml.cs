@@ -22,7 +22,7 @@ namespace WordPopupApp
         private PopupResultWindow Popup
         => _popup ??= new PopupResultWindow      // 第一次用时才创建
         {
-            Owner   = this,                      // 可选：让浮窗跟随主窗关闭
+            // Owner   = this,                      // 可选：让浮窗跟随主窗关闭
             WindowStartupLocation = WindowStartupLocation.Manual
         };
 
@@ -31,6 +31,7 @@ namespace WordPopupApp
         private readonly AnkiService _ankiService;
         private readonly SettingsService _settingsService;
         private AppSettings _currentSettings;
+        private readonly PhraseService _phraseService; // [新增] 词组服务
 
         public MainWindow()
         {
@@ -39,6 +40,10 @@ namespace WordPopupApp
             _translationService = new TranslationService(); // <-- 新增：实例化翻译服务
             _ankiService = new AnkiService();
             _settingsService = new SettingsService();
+            // [修改] 加载设置并初始化词组服务
+            _currentSettings = _settingsService.LoadSettings();
+            _phraseService = new PhraseService(_currentSettings);
+
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -82,32 +87,38 @@ namespace WordPopupApp
         {
             try
             {
+                // 1. 先记录鼠标位置，此时最接近选中区域
+                var p = System.Windows.Forms.Cursor.Position; 
                 GlobalHotKey.SimulateCtrlC();
                 var text = GlobalHotKey.GetTextFromClipboard()?.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
 
+                // [修改] 并行发起三个请求
                 var dictionaryTask = _dictionaryService.LookupAsync(text);
                 var translationTask = _translationService.TranslateToChineseAsync(text);
+                var phrasesTask = _phraseService.GetPhrasesAsync(text); // [新增] 获取词组的任务
 
-                await Task.WhenAll(dictionaryTask, translationTask);
-
+                await Task.WhenAll(dictionaryTask, translationTask, phrasesTask);
+                
                 var entry = await dictionaryTask;
                 var chineseTranslation = await translationTask;
+                var phrases = await phrasesTask; // [新增] 获取词组结果
 
-                // [修改] 创建ViewModel时，传入关闭窗口的回调
+                // [修改] 创建ViewModel时，传入词组数据
                 Popup.DataContext = new PopupResultViewModel(
                                         entry,
                                         chineseTranslation,
+                                        phrases, // <--- 新增词组参数
                                         _ankiService,
                                         _currentSettings,
                                         this,
-                                        () => Popup.Hide()); // <--- 新增此行
+                                        () => Popup.Hide());
 
-                var p = System.Windows.Forms.Cursor.Position;
-                Popup.Left = p.X + 20;
-                Popup.Top = p.Y + 20;
-                Popup.Show();
-                Popup.Activate();
+                // 2. 使用之前记录的位置来定位窗口
+                //    同时调用 SetPositionAndShow 方法，它内部有防越界处理
+                Popup.Left = p.X + 15; // 稍微偏移，避免遮挡
+                Popup.Top = p.Y + 15;
+                Popup.SetPositionAndShow(); // 使用封装好的方法显示并激活
             }
             catch (Exception ex)
             {
@@ -131,6 +142,12 @@ namespace WordPopupApp
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _hotKey?.Dispose();
+            // [新增] 手动关闭弹窗，确保进程能完全退出
+            // 因为 Popup 是单例，所以 _popup 可能已经被创建
+            if (_popup != null)
+            {
+                Application.Current.Shutdown();
+            }
         }
 
         public async Task EnsureWordPopUpNoteModelAsync()

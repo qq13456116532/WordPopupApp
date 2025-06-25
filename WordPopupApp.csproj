@@ -6,13 +6,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>  
+
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.NewtonsoftJson" Version="2.3.0" />
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+  </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
   </ItemGroup>
     <!-- 让 VS Code / C# Dev Kit 能看到 XAML 生成的 *.g.cs -->
   <ItemGroup>

@@ -8,7 +8,8 @@
         Title="查询结果" Height="300" Width="420" 
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
-        FontFamily="Microsoft YaHei UI">
+        FontFamily="Microsoft YaHei UI"
+        Icon="/Assets/app.ico">
     <Border Background="#F0FFFFFF" CornerRadius="8" BorderThickness="1" BorderBrush="#CCCCCC">
         <Border.Effect>
             <DropShadowEffect ShadowDepth="0" BlurRadius="10" Color="#AAAAAA" Opacity="0.5"/>
