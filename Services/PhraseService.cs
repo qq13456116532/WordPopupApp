@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using WordPopupApp.Models;
 
@@ -28,7 +29,7 @@ namespace WordPopupApp.Services
             _httpClient.DefaultRequestHeaders.Add("X-RapidAPI-Host", "wordsapiv1.p.rapidapi.com");
         }
 
-        public async Task<List<string>> GetPhrasesAsync(string word)
+        public async Task<List<string>> GetPhrasesAsync(string word, CancellationToken cancellationToken)
         {
             // 如果没有配置 API Key，直接返回空列表，避免出错
             if (string.IsNullOrWhiteSpace(_settings.WordsApiKey))
@@ -43,7 +44,7 @@ namespace WordPopupApp.Services
                 var request = new HttpRequestMessage(HttpMethod.Get, $"words/{word}/phrases");
                 request.Headers.Add("X-RapidAPI-Key", _settings.WordsApiKey);
 
-                var response = await _httpClient.SendAsync(request);
+                var response = await _httpClient.SendAsync(request, cancellationToken);
 
                 // 如果单词没有对应的词组，API会返回404，这是正常情况
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -57,6 +58,10 @@ namespace WordPopupApp.Services
                 var result = JsonConvert.DeserializeObject<WordsApiResponse>(json);
 
                 return result?.Phrases ?? new List<string>();
+            }
+            catch (TaskCanceledException)
+            {
+                return new List<string>(); // 任务取消时返回空列表
             }
             catch
             {

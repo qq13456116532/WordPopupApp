@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Windows;
 using WordPopupApp.Services;
 using WordPopupApp.Models;
@@ -82,9 +83,16 @@ namespace WordPopupApp
             }
         }
 
+        private CancellationTokenSource _cts;
+
         // 热键回调（已改成 async Task）
         private async Task HandleHotKeyAsync()
         {
+            // 取消之前的任务（如果存在）
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            var cancellationToken = _cts.Token;
+
             try
             {
                 // 1. 先记录鼠标位置，此时最接近选中区域
@@ -93,13 +101,15 @@ namespace WordPopupApp
                 var text = GlobalHotKey.GetTextFromClipboard()?.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
 
-                // [修改] 并行发起三个请求
-                var dictionaryTask = _dictionaryService.LookupAsync(text);
-                var translationTask = _translationService.TranslateToChineseAsync(text);
-                var phrasesTask = _phraseService.GetPhrasesAsync(text); // [新增] 获取词组的任务
+                // [修改] 并行发起三个请求，并传入 CancellationToken
+                var dictionaryTask = _dictionaryService.LookupAsync(text, cancellationToken);
+                var translationTask = _translationService.TranslateToChineseAsync(text, cancellationToken);
+                var phrasesTask = _phraseService.GetPhrasesAsync(text, cancellationToken); // [新增] 获取词组的任务
 
                 await Task.WhenAll(dictionaryTask, translationTask, phrasesTask);
                 
+                cancellationToken.ThrowIfCancellationRequested(); // 如果任务已取消，则抛出异常
+
                 var entry = await dictionaryTask;
                 var chineseTranslation = await translationTask;
                 var phrases = await phrasesTask; // [新增] 获取词组结果
@@ -120,6 +130,11 @@ namespace WordPopupApp
                 Popup.Top = p.Y + 15;
                 Popup.SetPositionAndShow(); // 使用封装好的方法显示并激活
             }
+            catch (OperationCanceledException) 
+            {
+                // 这是预期的异常，当一个新的查询开始时，旧的查询会被取消
+                // 无需任何操作，静默处理即可
+            }
             catch (Exception ex)
             {
                 MessageBox.Show($"热键处理失败：{ex.Message}");
@@ -133,7 +148,7 @@ namespace WordPopupApp
                 MessageBox.Show("请选择有效的牌组和笔记类型！");
                 return;
             }
-            _currentSettings.AnkiDeckName = DeckComboBox.SelectedItem.ToString();
+            _currentSettings.AnkiDeckName = DeckComboBox.SelectedItem.ToString() ?? string.Empty;
 
             _settingsService.SaveSettings(_currentSettings);
             MessageBox.Show("设置已保存！");

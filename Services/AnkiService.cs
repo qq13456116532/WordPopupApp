@@ -11,7 +11,7 @@ namespace WordPopupApp.Services
     {
         private readonly HttpClient _httpClient = new HttpClient { BaseAddress = new Uri("http://127.0.0.1:8765") };
 
-        private async Task<T> InvokeAsync<T>(string action, object parameters = null)
+        private async Task<T?> InvokeAsync<T>(string action, object? parameters = null)
         {
             var payload = new
             {
@@ -34,7 +34,7 @@ namespace WordPopupApp.Services
             var respJson = await resp.Content.ReadAsStringAsync();
             var wrapper = JsonConvert.DeserializeObject<AnkiResponse<T>>(respJson);
 
-            if (wrapper.Error != null)
+            if (wrapper?.Error != null)
                 throw new InvalidOperationException(wrapper.Error);
 
             return wrapper.Result;
@@ -42,8 +42,8 @@ namespace WordPopupApp.Services
 
         private class AnkiResponse<T>
         {
-            [JsonProperty("result")] public T Result { get; set; }
-            [JsonProperty("error")] public string Error { get; set; }
+            [JsonProperty("result")] public T? Result { get; set; }
+            [JsonProperty("error")] public string? Error { get; set; }
         }
 
         public Task<List<string>> GetDeckNamesAsync() => InvokeAsync<List<string>>("deckNames");

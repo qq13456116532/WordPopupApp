@@ -47,7 +47,7 @@ namespace WordPopupApp.ViewModels
 
         // [修改] 构造函数签名，增加 chineseTranslation 参数
 // [修改] 构造函数签名，增加 phrases 参数
-        public PopupResultViewModel(DictionaryEntry entry, string chineseTranslation, List<string> phrases, AnkiService ankiService, AppSettings settings, MainWindow mainWindow, Action closeAction)        {
+        public PopupResultViewModel(DictionaryEntry? entry, string? chineseTranslation, List<string>? phrases, AnkiService ankiService, AppSettings settings, MainWindow mainWindow, Action closeAction)        {
             // entry是单词的json
             _fullEntry = entry;
             _ankiService = ankiService;
@@ -59,7 +59,7 @@ namespace WordPopupApp.ViewModels
 
             ChineseDefinition = chineseTranslation ?? "翻译失败"; // 设置中文翻译
 
-            if (entry == null)
+            if (entry == null || entry.Meanings == null)
             {
                 Word = "未找到";
                 EnglishDefinitionText = "无法查询到该单词或短语的英文释义。";
@@ -135,10 +135,10 @@ namespace WordPopupApp.ViewModels
                 var selectedExamples = new List<string>();
 
                 // 1. 优先从每个词性中各取一个例句
-                var examplesFromEachPos = _fullEntry.Meanings
-                    .Select(m => m.Definitions.FirstOrDefault(d => !string.IsNullOrWhiteSpace(d.Example))?.Example)
+                var examplesFromEachPos = _fullEntry.Meanings?
+                    .Select(m => m.Definitions?.FirstOrDefault(d => !string.IsNullOrWhiteSpace(d.Example))?.Example)
                     .Where(ex => !string.IsNullOrEmpty(ex))
-                    .ToList();
+                    .ToList() ?? new List<string>();
                 
                 selectedExamples.AddRange(examplesFromEachPos);
 
@@ -146,11 +146,11 @@ namespace WordPopupApp.ViewModels
                 if (selectedExamples.Count < 2)
                 {
                     // 查找所有可用的例句，排除已经选过的
-                    var allOtherExamples = _fullEntry.Meanings
+                    var allOtherExamples = _fullEntry.Meanings?
                         .SelectMany(m => m.Definitions)
                         .Select(d => d.Example)
                         .Where(ex => !string.IsNullOrEmpty(ex) && !selectedExamples.Contains(ex))
-                        .ToList();
+                        .ToList() ?? new List<string?>();
 
                     // 需要补充的数量
                     int needed = 2 - selectedExamples.Count;
@@ -167,7 +167,7 @@ namespace WordPopupApp.ViewModels
                     selectedExamples.Select(e => e.Replace("\n", "<br/>"))
                 );
                 var notes = string.Join("<br/>",
-                    _fullEntry.Meanings
+                    _fullEntry.Meanings?
                               .Select(m => $"◆ {m.PartOfSpeech}"));
                 // [修改] 使用获取到的词组填充 "笔记" 字段
                 notes = (_phrases != null && _phrases.Any())

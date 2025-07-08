@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Threading;
 using System.Web; // 需要手动添加引用或使用 .NET 自动处理
 
 namespace WordPopupApp.Services
@@ -14,7 +15,7 @@ namespace WordPopupApp.Services
         /// </summary>
         /// <param name="text">要翻译的英文单词或短语</param>
         /// <returns>中文翻译结果，如果失败则返回提示信息</returns>
-        public async Task<string> TranslateToChineseAsync(string text)
+        public async Task<string> TranslateToChineseAsync(string text, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -27,7 +28,7 @@ namespace WordPopupApp.Services
                 var urlEncodedText = HttpUtility.UrlEncode(text);
                 var url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q={urlEncodedText}";
 
-                var response = await _httpClient.GetAsync(url);
+                var response = await _httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
@@ -38,6 +39,10 @@ namespace WordPopupApp.Services
                 var translatedText = jArray[0][0][0].ToString();
 
                 return translatedText;
+            }
+            catch (TaskCanceledException)
+            {
+                return "[取消]"; // 或者返回 string.Empty
             }
             catch
             {
