@@ -5,72 +5,88 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WordPopupApp.Views"
         mc:Ignorable="d"
-        Title="查询结果" Height="300" Width="420" 
+        Title="查询结果" Height="350" Width="420" 
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
         FontFamily="Microsoft YaHei UI"
         Icon="/Assets/app.ico">
-    <Border Background="#F0FFFFFF" CornerRadius="8" BorderThickness="1" BorderBrush="#CCCCCC">
+    <Border Background="#F5FFFFFF" CornerRadius="8" BorderThickness="1" BorderBrush="#CCCCCC">
         <Border.Effect>
             <DropShadowEffect ShadowDepth="0" BlurRadius="10" Color="#AAAAAA" Opacity="0.5"/>
         </Border.Effect>
+        
+        <!-- 主网格 -->
         <Grid Margin="15">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/> <!-- 新增一行 -->
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-
-            <!-- 单词和音标 -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Word}" FontSize="24" FontWeight="Bold" Foreground="#222222"/>
-                <TextBlock Text="{Binding PhoneticText}" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#555555"/>
-            </StackPanel>
-
-            <!-- 音频按钮 -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,5">
-                <Button Content="🔊 UK" Command="{Binding PlayAudioCommand}" IsEnabled="{Binding HasAudio}" Margin="0,0,5,0" Padding="5,2"/>
-            </StackPanel>
-
-            <!-- [新增] 中文释义 -->
-            <TextBlock Grid.Row="2" Text="{Binding ChineseDefinition}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="#005A9C" Margin="0,0,0,10"/>
             
-            <!-- [新增] 分割线 -->
-            <Separator Grid.Row="3" Margin="0,0,0,10"/>
-
-            <!-- 英文释义 -->
-            <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
-                <!-- [修改] 绑定到新的属性名 EnglishDefinitionText -->
-                <TextBlock Text="{Binding EnglishDefinitionText}" TextWrapping="Wrap" FontSize="12" Foreground="#666666" LineHeight="18"/>
-            </ScrollViewer>
-
-            <!-- Anki 按钮 -->
-            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-                <!-- [修改] 绑定 IsEnabled 属性，并使用 Style 来改变内容 -->
-                <Button Padding="10,3" Command="{Binding AddToAnkiCommand}">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Content" Value="+ Anki"/>
-                            <Setter Property="IsEnabled" Value="True"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsAddingToAnki}" Value="True">
-                                    <Setter Property="Content" Value="添加中..."/>
-                                    <Setter Property="IsEnabled" Value="False"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-            </StackPanel>
-
             <!-- 加载提示 -->
-            <TextBlock Text="正在查询..." Grid.Row="0" Grid.RowSpan="6" FontSize="18"
+            <TextBlock Text="正在查询..." Grid.Row="0" Grid.RowSpan="4" FontSize="18"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
+            <!-- 查询成功后显示的内容 -->
+            <Grid Grid.RowSpan="4" Visibility="{Binding SearchSuccess, Converter={StaticResource BooleanToVisibilityConverter}}">
+                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 单词和音标 -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Word}" FontSize="24" FontWeight="Bold" Foreground="#222222"/>
+                    <TextBlock Text="{Binding PhoneticText}" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#555555"/>
+                    <Button Content="🔊" Command="{Binding PlayAudioCommand}" IsEnabled="{Binding HasAudio}" 
+                            VerticalAlignment="Center" Margin="10,0,0,0" Padding="5,2"
+                            Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                </StackPanel>
+
+                <Separator Grid.Row="1" Margin="0,8,0,8"/>
+
+                <!-- 可滚动内容区 -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- 释义 -->
+                        <TextBlock Text="{Binding DefinitionsText}" TextWrapping="Wrap" FontSize="14" Foreground="#333" LineHeight="22"
+                                   Visibility="{Binding HasDefinitions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                        <!-- 网络短语 -->
+                        <StackPanel Visibility="{Binding HasPhrases, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="网络短语" FontWeight="Bold" FontSize="14" Foreground="#005A9C" Margin="0,12,0,5"/>
+                            <TextBlock Text="{Binding PhrasesText}" TextWrapping="Wrap" FontSize="12" Foreground="#666" LineHeight="18"/>
+                        </StackPanel>
+
+                        <!-- 柯林斯例句 -->
+                        <StackPanel Visibility="{Binding HasSentences, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="柯林斯例句" FontWeight="Bold" FontSize="14" Foreground="#005A9C" Margin="0,12,0,5"/>
+                            <TextBlock Text="{Binding SentencesText}" TextWrapping="Wrap" FontSize="12" Foreground="#666" LineHeight="18"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Anki 按钮 -->
+                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button Padding="10,3" Command="{Binding AddToAnkiCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="+ Anki"/>
+                                <Setter Property="IsEnabled" Value="{Binding CanAddToAnki}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAddingToAnki}" Value="True">
+                                        <Setter Property="Content" Value="添加中..."/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>

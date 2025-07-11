@@ -18,42 +18,39 @@ namespace WordPopupApp
     public partial class MainWindow : Window
     {
         private GlobalHotKey _hotKey;
-        private PopupResultWindow _popup;            // 单例实例
+        private PopupResultWindow _popup;
 
         private PopupResultWindow Popup
-        => _popup ??= new PopupResultWindow      // 第一次用时才创建
+        => _popup ??= new PopupResultWindow
         {
-            // Owner   = this,                      // 可选：让浮窗跟随主窗关闭
             WindowStartupLocation = WindowStartupLocation.Manual
         };
 
-        private readonly DictionaryService _dictionaryService;
-        private readonly TranslationService _translationService; // <-- 新增
+        // [删除] 旧的服务
+        // private readonly DictionaryService _dictionaryService;
+        // private readonly TranslationService _translationService; 
+        // private readonly PhraseService _phraseService;
+
+        // [新增] 新的服务
+        private readonly YoudaoScraperService _youdaoScraperService;
         private readonly AnkiService _ankiService;
         private readonly SettingsService _settingsService;
         private AppSettings _currentSettings;
-        private readonly PhraseService _phraseService; // [新增] 词组服务
 
         public MainWindow()
         {
             InitializeComponent();
-            _dictionaryService = new DictionaryService();
-            _translationService = new TranslationService(); // <-- 新增：实例化翻译服务
+            // [修改] 实例化新的服务
+            _youdaoScraperService = new YoudaoScraperService();
             _ankiService = new AnkiService();
             _settingsService = new SettingsService();
-            // [修改] 加载设置并初始化词组服务
             _currentSettings = _settingsService.LoadSettings();
-            _phraseService = new PhraseService(_currentSettings);
-
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // 加载设置
-            // 加载设置
             _currentSettings = _settingsService.LoadSettings();
 
-            // 动态获取 Anki 中现有的 Deck 与 Model
             try
             {
                 var deckNames = await _ankiService.GetDeckNamesAsync();
@@ -61,21 +58,17 @@ namespace WordPopupApp
                 DeckComboBox.SelectedItem = deckNames.Contains(_currentSettings.AnkiDeckName)
                     ? _currentSettings.AnkiDeckName
                     : deckNames.FirstOrDefault();
-
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"无法连接到 Anki (请确认已安装并运行 AnkiConnect)：{ex.Message}");
             }
 
-            // 注册全局热键 Ctrl + Z
             try
             {
-                uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.Z);  // 把 WPF 的 Key 转成 VK
+                uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.Z);
                 _hotKey = new GlobalHotKey(this, HotKeyModifiers.MOD_CONTROL, vk);
-                // Virtual-Key Codes: https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
                 _hotKey.HotKeyPressed += async () => await HandleHotKeyAsync();
-
             }
             catch (Exception ex)
             {
@@ -85,55 +78,46 @@ namespace WordPopupApp
 
         private CancellationTokenSource _cts;
 
-        // 热键回调（已改成 async Task）
         private async Task HandleHotKeyAsync()
         {
-            // 取消之前的任务（如果存在）
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var cancellationToken = _cts.Token;
 
             try
             {
-                // 1. 先记录鼠标位置，此时最接近选中区域
-                var p = System.Windows.Forms.Cursor.Position; 
+                var p = System.Windows.Forms.Cursor.Position;
                 GlobalHotKey.SimulateCtrlC();
                 var text = GlobalHotKey.GetTextFromClipboard()?.Trim();
                 if (string.IsNullOrWhiteSpace(text)) return;
 
-                // [修改] 并行发起三个请求，并传入 CancellationToken
-                var dictionaryTask = _dictionaryService.LookupAsync(text, cancellationToken);
-                var translationTask = _translationService.TranslateToChineseAsync(text, cancellationToken);
-                var phrasesTask = _phraseService.GetPhrasesAsync(text, cancellationToken); // [新增] 获取词组的任务
+                // [修改] 核心逻辑变更: 只调用一个服务
+                var wordCardTask = _youdaoScraperService.ScrapeWordAsync(text, cancellationToken);
 
-                await Task.WhenAll(dictionaryTask, translationTask, phrasesTask);
-                
-                cancellationToken.ThrowIfCancellationRequested(); // 如果任务已取消，则抛出异常
+                // 显示加载中的弹窗
+                Popup.DataContext = new PopupResultViewModel(null, _ankiService, _currentSettings, this, () => Popup.Hide());
+                Popup.Left = p.X + 15;
+                Popup.Top = p.Y + 15;
+                Popup.SetPositionAndShow();
 
-                var entry = await dictionaryTask;
-                var chineseTranslation = await translationTask;
-                var phrases = await phrasesTask; // [新增] 获取词组结果
+                var wordCard = await wordCardTask;
 
-                // [修改] 创建ViewModel时，传入词组数据
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // [修改] 使用新的数据模型创建 ViewModel
                 Popup.DataContext = new PopupResultViewModel(
-                                        entry,
-                                        chineseTranslation,
-                                        phrases, // <--- 新增词组参数
+                                        wordCard,
                                         _ankiService,
                                         _currentSettings,
                                         this,
                                         () => Popup.Hide());
 
-                // 2. 使用之前记录的位置来定位窗口
-                //    同时调用 SetPositionAndShow 方法，它内部有防越界处理
-                Popup.Left = p.X + 15; // 稍微偏移，避免遮挡
-                Popup.Top = p.Y + 15;
-                Popup.SetPositionAndShow(); // 使用封装好的方法显示并激活
+                // 再次显示和激活，确保数据更新后窗口在最前
+                Popup.SetPositionAndShow();
             }
-            catch (OperationCanceledException) 
+            catch (OperationCanceledException)
             {
-                // 这是预期的异常，当一个新的查询开始时，旧的查询会被取消
-                // 无需任何操作，静默处理即可
+                // 忽略任务取消异常
             }
             catch (Exception ex)
             {
@@ -145,7 +129,7 @@ namespace WordPopupApp
         {
             if (DeckComboBox.SelectedItem == null)
             {
-                MessageBox.Show("请选择有效的牌组和笔记类型！");
+                MessageBox.Show("请选择有效的牌组！");
                 return;
             }
             _currentSettings.AnkiDeckName = DeckComboBox.SelectedItem.ToString() ?? string.Empty;
@@ -157,14 +141,13 @@ namespace WordPopupApp
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _hotKey?.Dispose();
-            // [新增] 手动关闭弹窗，确保进程能完全退出
-            // 因为 Popup 是单例，所以 _popup 可能已经被创建
             if (_popup != null)
             {
                 Application.Current.Shutdown();
             }
         }
 
+        // EnsureWordPopUpNoteModelAsync 和 AnkiConnectRequestAsync 方法保持不变
         public async Task EnsureWordPopUpNoteModelAsync()
         {
             const string ModelName = "WordPopUpNote";
@@ -195,7 +178,7 @@ namespace WordPopupApp
                 {{/例句}}
                 </div>
                 <div class=""bar foot"">
-                <div id=""url"">数据源:《英语常用短语词典》</div>
+                <div id=""url"">数据源:《有道词典》</div>
                 </div>
                 <script type=""text/javascript"">
                 var colorMap = {
@@ -218,10 +201,13 @@ namespace WordPopupApp
                     'aux.':'#04B7C9',
                     'pl.':'#D111D3',
                     'abbr.':'#D111D3',
+                    'n/a':'#808080',
                 };
                 [].forEach.call(document.querySelectorAll('#definition'), function(div) {
-                div.innerHTML = div.innerHTML
-                .replace(/\b[a-z]+\./g, function(symbol) {
+                div.innerHTML = div.innerHTML.replace(
+                /\b([a-z]+\.)|n\/a\b/gi,      
+                function(symbol) {
+                    symbol = symbol.toLowerCase(); 
                     if(colorMap[symbol]) {
                     return '<a style=""background-color:' + colorMap[symbol] + '"">' +
                     symbol + '</a>';
@@ -366,16 +352,9 @@ namespace WordPopupApp
                 </script>
                 ";
 
-
-
-            // 1. 检查模型是否存在
             var existModels = await AnkiConnectRequestAsync<List<string>>("modelNames");
-            if (existModels.Contains(ModelName))
-            {
-                // 2. 如果存在，不确定怎么做，先空着 TO DO
-                return;
-            }
-            // 3. 新建 Note Type
+            if (existModels.Contains(ModelName)) return;
+
             await AnkiConnectRequestAsync<object>("createModel", new
             {
                 modelName = ModelName,
@@ -400,7 +379,7 @@ namespace WordPopupApp
                 version = 6,
                 @params = parameters ?? new { }
             };
-            var resp = await client.PostAsync("http://127.0.0.1:8765", 
+            var resp = await client.PostAsync("http://127.0.0.1:8765",
                 new StringContent(JsonConvert.SerializeObject(postObj), Encoding.UTF8, "application/json"));
             var json = await resp.Content.ReadAsStringAsync();
             var root = JObject.Parse(json);
@@ -408,7 +387,5 @@ namespace WordPopupApp
                 throw new Exception(root["error"].ToString());
             return root["result"].ToObject<T>();
         }
-
-
     }
 }

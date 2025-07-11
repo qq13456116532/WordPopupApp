@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- [新增] 添加 AngleSharp 用于 HTML 解析 -->
+    <PackageReference Include="AngleSharp" Version="1.1.2" /> 
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.NewtonsoftJson" Version="2.3.0" />
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
