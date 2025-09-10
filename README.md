@@ -1,106 +1,111 @@
 
 ---
 
-# WordPopupApp - 划词翻译与Anki制卡助手
----
-`WordPopupApp` 是一款为 Windows 用户设计的 C#/.NET 桌面应用。它提供了一个简单高效的划词翻译体验，并能一键将查询的单词及其中英文释义、例句、发音等信息制成卡片，添加到 [Anki](https://apps.ankiweb.net/) 中，极大地提升了阅读和学习效率。
+# WordPopupApp - 划词翻译 Anki 助手
 
-2025-09-10 adding 现在，除了爬虫与公开词典接口外，还支持使用 Google Gemini 进行智能生成（可选，支持两种集成方式：纯 C# 或经由 LangChain）。
+这是一款 Windows 平台的划词翻译工具，旨在帮助用户快速查询单词释义，并一键将其添加到 Anki 中，方便后续复习。它结合了有道词典的网络爬虫和可选的 AI (Gemini) 补充功能，为用户提供丰富、全面的单词卡片信息。
 
-![应用截图](./Assets/截图0.png) 
-![应用截图](./Assets/截图1.png) 
+## 主要功能
 
-当点击 `+Anki` 之后，在Anki生成的卡片如下：
-![应用截图](./Assets/截图2.png) 
-![应用截图](./Assets/截图3.png) 
+*   **全局热键**：在任何地方选中单词，按下 `Ctrl + Z` 即可快速查词。
+*   **内容丰富**：自动从有道词典抓取单词的音标、释义、词组和柯林斯例句。
+*   **AI 增强**：可选的 AI (Gemini) 模式，用于补充或生成更丰富的单词信息，尤其在有道词典信息不全时。
+*   **Anki 集成**：一键将完整的单词卡片（包含释义、例句、发音）添加到指定的 Anki 牌组中。
+*   **自动模板**：首次添加时，会自动在 Anki 中创建优化好的卡片模板和笔记类型 (`WordPopUpNote`)。
+*   **简洁易用**：直观的设置界面和美观的查询结果弹窗。
 
+## 软件截图
 
-## ✨ 主要功能
+**1. 设置主界面**
+程序启动后，可在此配置 Anki 牌组并选择是否启用 AI 补充。
 
-- **全局热键**：在任何应用程序中，选中英文单词或短语，按下 `Ctrl + Z` 即可触发查询。
-- **多源查询**：
-    - **英文释义**：从 [Free Dictionary API](https://dictionaryapi.dev/) 获取详细的英文定义、词性及例句。
-    - **中文翻译**：快速获取单词或短语的中文意思。
-    - **相关词组**：通过 [WordsAPI](https://www.wordsapi.com/) 获取与查询单词相关的常用短语。
-    - **AI生成**：通过 LangChain 框架，将应用与 Gemini 模型连接起来，通过 Google Gemini 进行智能生成，获取更丰富的内容。
-- **音频播放**：点击发音按钮，即可播放单词的真人发音。
-- **一键添加至Anki**：
-    - 将单词、音标、中文释义、英文例句、相关词组和发音一键添加到 Anki。
-    - 自动在 Anki 中创建名为 `WordPopUpNote` 的精美笔记模板，无需手动配置。
-- **高度可配置**：
-    - 启动后可在设置界面选择要添加到的 Anki 牌组。
-    - 所有配置（如牌组名称、API密钥）都保存在本地 `settings.json` 文件中。
+![运行后的界面](Assets/截图0.png)
 
-## ⚙️ 先决条件
+**2. 查词弹窗**
+选中单词并按下快捷键后，会弹出此窗口显示查询结果。
 
-在使用本应用前，请确保您的电脑满足以下条件：
+![查询出来的单词界面](Assets/截图1.png)
 
-1.  **操作系统**：Windows。
-2.  **.NET 运行库**：需要安装 [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) 或更高版本。
-3.  **Anki**：已安装 Anki 桌面客户端。
-4.  **AnkiConnect**：在 Anki 中已安装并启用了 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件。**这是与Anki通信的必要组件。**
-5.  **WordsAPI 密钥 (可选)**：为了使用“相关词组”功能，您需要一个 WordsAPI 的密钥。
-    -   前往 [RapidAPI](https://rapidapi.com/hub) 网站。
-    -   搜索并订阅 `WordsAPI` 服务 (通常有免费额度)。
-    -   获取您的 `X-RapidAPI-Key`。
-6. **Google Gemini 密钥 (可选)**：为了使用“AI生成”功能，您需要一个 Google Gemini 的密钥。
-    -   前往 [Google AI Studio](https://ai.google.dev/) 网站。
-    -   搜索并订阅 `Google Gemini` 服务 (通常有免费额度)。
-    -   获取您的 `API_KEY`。
-7. **python 环境**: 确保本地已安装 Python 3.10+
+**3. Anki 卡片效果**
+添加到 Anki 后的卡片样式，排版清晰，支持发音。
 
-## 🚀 安装与设置
+*   **卡片正面：**
+    ![Anki 卡片正面](Assets/截图2.png)
 
-1.  **下载应用**：从本项目的 [Releases](https://github.com/qq13456116532/WordPopupApp/releases) 页面下载最新的压缩包，并解压到任意位置。
-2.  **配置API密钥 (可选)**：
-    -   在解压后的文件夹中，找到 `settings.json` 文件。
-    -   用记事本或任何文本编辑器打开它。
-    -   将您从 RapidAPI 获取的密钥粘贴到 `WordsApiKey` 字段的值中，并保存文件。
-    ```json
-    {
-      "AnkiDeckName": "Myself",
-      "WordsApiKey": "在此处粘贴你从RapidAPI获取的密钥"
-    }
-    ```
-    *如果留空，"相关词组"功能将不可用，但不影响其他核心功能。*
-3.  **运行Anki**：确保 Anki 桌面程序正在运行，并且 AnkiConnect 插件已启用。
+*   **卡片背面：**
+    ![Anki 卡片背面](Assets/截图3.png)
 
-## 📖 使用方法
+## 环境要求
 
-1.  **启动应用**：双击运行 `WordPopupApp.exe`, 并在 /ai/文件夹下使用命令`python -m uvicorn server:app --host 127.0.0.1 --port 8040 --reload`启动langchain服务。
-2.  **配置设置**：
-    -   应用启动后会显示一个设置窗口。
-    -   程序会自动获取您 Anki 中的所有牌组，请在下拉列表中选择一个您希望用于存词的默认牌组。
-    -   点击 “保存设置” 按钮。
-3.  **最小化窗口**：将设置窗口最小化，应用会在后台持续运行。
-4.  **开始使用**：
-    -   在浏览器、PDF阅读器、文档等任何地方，用鼠标选中一个您不认识的英文单词。
-    -   按下快捷键 `Ctrl + Z`。
-    -   一个查询结果弹窗会立刻出现在您的鼠标旁边。
-    -   查看释义，点击 `+ Anki` 按钮即可将该词条添加到您之前设置好的牌组中。
-    -   弹窗会在您点击其他地方后自动消失。
+1.  **操作系统**: Windows 10 或更高版本。
+2.  **运行环境**: .NET Framework 或 .NET Core/5/6+ (根据项目编译目标决定)。
+3.  **Anki**:
+    *   已安装 Anki 桌面版。
+    *   已在 Anki 中安装并启用 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件。
+4.  **AI 功能 (可选)**:
+    *   Python 3.8+ 环境。
+    *   一个有效的 Google AI API Key (用于 Gemini 模型)。
 
-## 🏗️ 从源码构建
+## 安装与使用
 
-如果您想自行编译或修改代码，请按以下步骤操作：
+### 步骤一：配置 Anki
+1.  启动你的 Anki 桌面程序。
+2.  确保 AnkiConnect 插件已经安装并启用。程序需要通过它来与 Anki 通信。
 
-1.  克隆本仓库：
+### 步骤二：配置 AI 后端 (可选)
+如果您想使用 AI 补充功能，请按照以下步骤启动本地服务器：
+
+1.  **进入 `ai` 目录**:
     ```bash
-    git clone https://github.com/qq13456116532/WordPopupApp.git
+    cd ai
     ```
-2.  使用 Visual Studio 2022+ 或安装了 C# Dev Kit 插件的 VS Code 打开项目。
-3.  还原 NuGet 包依赖。
-4.  直接生成 (Build) 或运行 (Run) 项目即可。
+2.  **安装 Python 依赖**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **配置 API Key**:
+    *   用代码编辑器打开 `ai/server.py` 文件。
+    *   找到以下代码行：
+        ```python
+        LLM = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash",
+            google_api_key= "请在这里输入你的AI ApiKey" ,  # os.getenv("GOOGLE_API_KEY"),
+            temperature=0.4,
+        )
+        ```
+    *   将 `"请在这里输入你的AI ApiKey"` 替换为您自己的 Google AI API Key。
+4.  **启动本地服务**:
+    ```bash
+    uvicorn server:app --host 127.0.0.1 --port 8040
+    ```
+    请保持此命令行窗口在后台运行。
 
-## 📦 依赖项
+### 步骤三：运行主程序
 
-### 外部服务
--   [AnkiConnect](https://ankiweb.net/shared/info/2055492159)
--   [Free Dictionary API](https://dictionaryapi.dev/)
--   [WordsAPI on RapidAPI](https://rapidapi.com/dpventures/api/wordsapi)
--   Google Translate (Unofficial API)
+1.  通过 Visual Studio 编译并运行项目，或者直接执行已生成的 `.exe` 文件。
+2.  程序启动后，会显示设置界面 (`MainWindow.xaml`)。
+3.  下拉列表会自动加载你 Anki 中的所有牌组，请选择一个用于存放单词卡片的目标牌组。
+4.  如果你已经启动了 AI 后端服务，可以勾选“启用 AI 补充”。
+5.  点击 **“保存设置”** 按钮。
+6.  最小化设置窗口，程序会驻留在后台，并监听全局热键。
 
-### NuGet 包
--   [CommunityToolkit.Mvvm](https://www.nuget.org/packages/CommunityToolkit.Mvvm/): 用于实现 MVVM 设计模式。
--   [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/): 用于处理 JSON 序列化与反序列化。
--   `Microsoft.WindowsDesktop.App.WindowsForms`: 用于模拟键盘输入和获取鼠标位置。
+### 步骤四：开始使用
+
+1.  在任何应用程序（如浏览器、PDF 阅读器、文档编辑器等）中，用鼠标选中一个英文单词或短语。
+2.  按下快捷键 `Ctrl + Z`。
+3.  鼠标指针旁边会立刻弹出查询结果窗口。
+4.  如果需要将该单词存入 Anki，点击弹窗右下角的 **"+ Anki"** 按钮即可。
+
+## 技术栈
+
+*   **前端**: C#, WPF (.NET)
+*   **核心库**:
+    *   `AngleSharp`: 用于解析 HTML，抓取有道词典网页内容。
+    *   `Newtonsoft.Json`: 用于处理 JSON 数据。
+    *   `CommunityToolkit.Mvvm`: 实现 MVVM 设计模式。
+*   **AI 后端**:
+    *   Python
+    *   `FastAPI`: 构建本地 API 服务。
+    *   `LangChain`, `langchain-google-genai`: 调用和封装大语言模型 (Gemini)。
+*   **通信**:
+    *   `HttpClient`: 用于 C# 程序与网页、本地 AI 服务以及 AnkiConnect 的通信。

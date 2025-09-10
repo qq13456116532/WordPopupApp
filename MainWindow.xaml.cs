@@ -42,6 +42,7 @@ namespace WordPopupApp
             _ankiService = new AnkiService();
             _settingsService = new SettingsService();
             _currentSettings = _settingsService.LoadSettings();
+            EnableAICheckBox.IsChecked = _currentSettings.EnableAISupplement;
             _lcClient = new LangChainClient(); // 本地 127.0.0.1:8040
         }
 
@@ -101,8 +102,12 @@ namespace WordPopupApp
                 Popup.SetPositionAndShow();
 
                 var wordCard = await wordCardTask;
-                var llm = await lcTask;
-
+                YoudaoWordCard? llm = null;
+                
+                if (_currentSettings.EnableAISupplement)
+                {
+                    llm = await _lcClient.GenerateAsync(text, cancellationToken);
+                }
                 if (llm != null) // 仅使用大语言模型的结果填充缺失内容
                 {
                     // 同样补齐缺失块
@@ -144,6 +149,8 @@ namespace WordPopupApp
                 return;
             }
             _currentSettings.AnkiDeckName = DeckComboBox.SelectedItem.ToString() ?? string.Empty;
+            
+            _currentSettings.EnableAISupplement = EnableAICheckBox.IsChecked == true;
 
             _settingsService.SaveSettings(_currentSettings);
             MessageBox.Show("设置已保存！");
