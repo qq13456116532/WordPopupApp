@@ -34,7 +34,7 @@ class Query(BaseModel):
 
 LLM = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
-    google_api_key= "AIzaSyB2KNWGXZvJ38ObgJsPu_0NE3oG1D68lAQ" ,  # os.getenv("GOOGLE_API_KEY"),
+    google_api_key= "在这里填入你的API KEY" ,  # os.getenv("GOOGLE_API_KEY"),
     temperature=0.4,
 )
 
