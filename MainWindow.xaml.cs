@@ -25,14 +25,11 @@ namespace WordPopupApp
         {
             WindowStartupLocation = WindowStartupLocation.Manual
         };
-
-        // [删除] 旧的服务
-        // private readonly DictionaryService _dictionaryService;
-        // private readonly TranslationService _translationService; 
-        // private readonly PhraseService _phraseService;
-
-        // [新增] 新的服务
+        //有道的服务
         private readonly YoudaoScraperService _youdaoScraperService;
+        // 大语言模型服务
+        private readonly LangChainClient _lcClient;
+
         private readonly AnkiService _ankiService;
         private readonly SettingsService _settingsService;
         private AppSettings _currentSettings;
@@ -45,6 +42,7 @@ namespace WordPopupApp
             _ankiService = new AnkiService();
             _settingsService = new SettingsService();
             _currentSettings = _settingsService.LoadSettings();
+            _lcClient = new LangChainClient(); // 本地 127.0.0.1:8040
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -93,6 +91,8 @@ namespace WordPopupApp
 
                 // [修改] 核心逻辑变更: 只调用一个服务
                 var wordCardTask = _youdaoScraperService.ScrapeWordAsync(text, cancellationToken);
+                //这里是请求大语言模型
+                Task<YoudaoWordCard?> lcTask = _lcClient.GenerateAsync(text, cancellationToken);
 
                 // 显示加载中的弹窗
                 Popup.DataContext = new PopupResultViewModel(null, _ankiService, _currentSettings, this, () => Popup.Hide());
@@ -101,6 +101,17 @@ namespace WordPopupApp
                 Popup.SetPositionAndShow();
 
                 var wordCard = await wordCardTask;
+                var llm = await lcTask;
+
+                if (llm != null) // 仅使用大语言模型的结果填充缺失内容
+                {
+                    // 同样补齐缺失块
+                    if (string.IsNullOrWhiteSpace(wordCard.Phonetic)) wordCard.Phonetic = llm.Phonetic;
+                    if (string.IsNullOrWhiteSpace(wordCard.AudioUrl)) wordCard.AudioUrl = llm.AudioUrl;
+                    if (wordCard.Definitions.Count == 0 && llm.Definitions.Count > 0) wordCard.Definitions = llm.Definitions;
+                    if (wordCard.Phrases.Count == 0 && llm.Phrases.Count > 0) wordCard.Phrases = llm.Phrases;
+                    if (wordCard.Sentences.Count == 0 && llm.Sentences.Count > 0) wordCard.Sentences = llm.Sentences;
+                }
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -181,41 +192,39 @@ namespace WordPopupApp
                 <div id=""url"">数据源:《有道词典》</div>
                 </div>
                 <script type=""text/javascript"">
-                var colorMap = {
-                    'n.':'#e3412f',
-                    'a.':'#f8b002',
-                    'adj.':'#f8b002',
-                    'ad.':'#684b9d',
-                    'adv.':'#684b9d',
-                    'v.':'#539007',
-                    'vi.':'#539007',
-                    'vt.':'#539007',
+                const colorMap = {
+                    'n.':   '#e3412f',
+                    'a.':   '#f8b002',
+                    'adj.': '#f8b002',
+                    'ad.':  '#684b9d',
+                    'adv.': '#684b9d',
+                    'v.':   '#539007',
+                    'vi.':  '#539007',
+                    'vt.':  '#539007',
                     'prep.':'#04B7C9',
                     'conj.':'#04B7C9',
                     'pron.':'#04B7C9',
-                    'art.':'#04B7C9',
-                    'num.':'#04B7C9',
-                    'int.':'#04B7C9',
+                    'art.': '#04B7C9',
+                    'num.': '#04B7C9',
+                    'int.': '#04B7C9',
                     'interj.':'#04B7C9',
                     'modal.':'#04B7C9',
-                    'aux.':'#04B7C9',
-                    'pl.':'#D111D3',
+                    'aux.': '#04B7C9',
+                    'pl.':  '#D111D3',
                     'abbr.':'#D111D3',
-                    'n/a':'#808080',
-                };
-                [].forEach.call(document.querySelectorAll('#definition'), function(div) {
-                div.innerHTML = div.innerHTML.replace(
-                /\b([a-z]+\.)|n\/a\b/gi,      
-                function(symbol) {
-                    symbol = symbol.toLowerCase(); 
-                    if(colorMap[symbol]) {
-                    return '<a style=""background-color:' + colorMap[symbol] + '"">' +
-                    symbol + '</a>';
-                    }else{
-                    return symbol;
-                    }
-                });
-                });
+                    'n/a':  '#808080'
+                    };
+
+                    const regSource = Object.keys(colorMap)
+                    .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+                    .join('|');
+
+                    const posReg = new RegExp(`(?:${regSource})`, 'gi');
+                    div.innerHTML = div.innerHTML.replace(posReg, m => {
+                    const key = m.toLowerCase();
+                    return `<a style='background-color:${colorMap[key]}'>${m}</a>`;
+                    });
+
                 </script>
                 ";
 

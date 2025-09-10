@@ -5,6 +5,8 @@
 ---
 `WordPopupApp` 是一款为 Windows 用户设计的 C#/.NET 桌面应用。它提供了一个简单高效的划词翻译体验，并能一键将查询的单词及其中英文释义、例句、发音等信息制成卡片，添加到 [Anki](https://apps.ankiweb.net/) 中，极大地提升了阅读和学习效率。
 
+2025-09-10 adding 现在，除了爬虫与公开词典接口外，还支持使用 Google Gemini 进行智能生成（可选，支持两种集成方式：纯 C# 或经由 LangChain）。
+
 ![应用截图](./Assets/截图0.png) 
 ![应用截图](./Assets/截图1.png) 
 
@@ -20,6 +22,7 @@
     - **英文释义**：从 [Free Dictionary API](https://dictionaryapi.dev/) 获取详细的英文定义、词性及例句。
     - **中文翻译**：快速获取单词或短语的中文意思。
     - **相关词组**：通过 [WordsAPI](https://www.wordsapi.com/) 获取与查询单词相关的常用短语。
+    - **AI生成**：通过 LangChain 框架，将应用与 Gemini 模型连接起来，通过 Google Gemini 进行智能生成，获取更丰富的内容。
 - **音频播放**：点击发音按钮，即可播放单词的真人发音。
 - **一键添加至Anki**：
     - 将单词、音标、中文释义、英文例句、相关词组和发音一键添加到 Anki。
@@ -40,6 +43,11 @@
     -   前往 [RapidAPI](https://rapidapi.com/hub) 网站。
     -   搜索并订阅 `WordsAPI` 服务 (通常有免费额度)。
     -   获取您的 `X-RapidAPI-Key`。
+6. **Google Gemini 密钥 (可选)**：为了使用“AI生成”功能，您需要一个 Google Gemini 的密钥。
+    -   前往 [Google AI Studio](https://ai.google.dev/) 网站。
+    -   搜索并订阅 `Google Gemini` 服务 (通常有免费额度)。
+    -   获取您的 `API_KEY`。
+7. **python 环境**: 确保本地已安装 Python 3.10+
 
 ## 🚀 安装与设置
 
@@ -59,7 +67,7 @@
 
 ## 📖 使用方法
 
-1.  **启动应用**：双击运行 `WordPopupApp.exe`。
+1.  **启动应用**：双击运行 `WordPopupApp.exe`, 并在 /ai/文件夹下使用命令`python -m uvicorn server:app --host 127.0.0.1 --port 8040 --reload`启动langchain服务。
 2.  **配置设置**：
     -   应用启动后会显示一个设置窗口。
     -   程序会自动获取您 Anki 中的所有牌组，请在下拉列表中选择一个您希望用于存词的默认牌组。
